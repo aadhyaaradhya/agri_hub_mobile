@@ -18,6 +18,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.saumya1601.agrihub",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#064e3b"
@@ -28,6 +29,12 @@
     },
     "updates": {
       "enabled": false
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "2d25ce86-ea1c-470a-bb59-980f8725d288"
+      }
+    },
+    "owner": "saumya1601"
   }
 }
