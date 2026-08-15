@@ -1,439 +1,423 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   View,
   ScrollView,
   TouchableOpacity,
-  TextInput,
-  Alert,
+  Image,
+  ImageBackground,
+  Dimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
+import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Sprout, Sun, Moon, ArrowRight } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import { AppText } from '../../../components/AppText';
-import { Card } from '../../../components/Card';
-import { Button } from '../../../components/Button';
-import {
-  Search,
-  MapPin,
-  ShoppingCart,
-  Star,
-  CheckCircle2,
-  Leaf,
-  Filter,
-  ArrowRight,
-  User,
-} from 'lucide-react-native';
-import { ProduceCategory, ProduceItem } from '../types';
-import { categoryOptions, sampleProduceList } from '../mockData';
-import { UserProfileModal } from '../../profile/UserProfileModal';
+import { LoadingState } from '../../../components/LoadingState';
+import { ScreenWrapper } from '../../../components/ScreenWrapper';
+import { useMarketplace } from '../../../state/marketplace/MarketplaceContext';
+import { useConfig } from '../../../state/config/ConfigContext';
+import { totalStockByCategory } from '../utils';
+import { AppStackParamList, BuyerTabParamList } from '../../../navigation/types';
 
-interface MarketplaceScreenProps {
-  userRoleLabel: string;
-  userName?: string;
-  mobileNumber?: string;
-  companyName?: string;
-  gstNumber?: string;
-  onLogout: () => void;
-  onSwitchView?: () => void;
-}
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = Math.min(SCREEN_WIDTH * 0.78, 300);
+const CARD_GAP = 12;
+const SNAP_INTERVAL = CARD_WIDTH + CARD_GAP;
 
-export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({
-  userRoleLabel,
-  userName = 'Valued Partner',
-  mobileNumber,
-  companyName,
-  gstNumber,
-  onLogout,
-  onSwitchView,
-}) => {
-  const { colors, isDark, spacing } = useTheme();
-  const [selectedCategory, setSelectedCategory] = useState<ProduceCategory>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [cartCount, setCartCount] = useState(0);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+const GRADE_BANNERS: Record<string, any> = {
+  grade_85: require('../../../../assets/banners/banner_85.jpg'),
+  grade_95: require('../../../../assets/banners/banner_95.jpg'),
+  grade_98: require('../../../../assets/banners/banner_98.jpg'),
+  grade_99: require('../../../../assets/banners/banner_99.jpg'),
+};
 
-  // Filter produce list by category & search query
-  const filteredProduce = sampleProduceList.filter((item) => {
-    const matchesCategory =
-      selectedCategory === 'all' || item.category === selectedCategory;
-    const matchesSearch =
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.supplierName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.location.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+type Nav = CompositeNavigationProp<
+  BottomTabNavigationProp<BuyerTabParamList, 'Marketplace'>,
+  NativeStackNavigationProp<AppStackParamList>
+>;
 
-  const handleInquire = (item: ProduceItem) => {
-    setCartCount((prev) => prev + 1);
-    Alert.alert(
-      'Inquiry Placed!',
-      `Inquiry for "${item.name}" (${item.price} / ${item.unit}) sent to ${item.supplierName}.`
-    );
+// Buyer home screen. Deliberately shows ONLY aggregate supply counts per
+// purity grade — no supplier name, no price, anywhere on this screen.
+export const MarketplaceScreen: React.FC = () => {
+  const navigation = useNavigation<Nav>();
+  const { colors, isDark, toggleTheme, spacing } = useTheme();
+  const { listings, isLoaded } = useMarketplace();
+  const { config, isLoading: configLoading } = useConfig();
+
+  const carouselRef = useRef<ScrollView>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const isInteracting = useRef(false);
+
+  const gradeOptions = config ? config.gradeOptions.filter((g) => g.id !== 'custom') : [];
+
+  // Auto-scroll carousel effect
+  useEffect(() => {
+    if (gradeOptions.length <= 1) return;
+
+    const timer = setInterval(() => {
+      if (isInteracting.current) return;
+      setActiveIndex((prev) => {
+        const next = (prev + 1) % gradeOptions.length;
+        carouselRef.current?.scrollTo({
+          x: next * SNAP_INTERVAL,
+          animated: true,
+        });
+        return next;
+      });
+    }, 3500);
+
+    return () => clearInterval(timer);
+  }, [gradeOptions.length]);
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const scrollX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(scrollX / SNAP_INTERVAL);
+    if (index >= 0 && index < gradeOptions.length && index !== activeIndex) {
+      setActiveIndex(index);
+    }
   };
 
+  if (!isLoaded || configLoading || !config) {
+    return (
+      <ScreenWrapper>
+        <LoadingState label="Loading marketplace…" />
+      </ScreenWrapper>
+    );
+  }
+
   return (
-    <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
-      {/* Top Marketplace Bar */}
+    <ScreenWrapper padded={false} edges={['top', 'left', 'right']}>
       <View style={[styles.header, { paddingHorizontal: spacing.md }]}>
-        <View>
-          <View style={styles.locationRow}>
-            <MapPin size={14} color={colors.primary} />
-            <AppText variant="caption" color={colors.primary} weight="semibold" style={{ marginLeft: 4 }}>
-              Punjab, India
-            </AppText>
-          </View>
-          <AppText variant="h2" weight="bold">
-            Agri Marketplace
+        <View style={styles.brandTitleRow}>
+          <Image
+            source={require('../../../../assets/icon.png')}
+            style={[styles.brandLogo, { borderColor: colors.border }]}
+            resizeMode="cover"
+          />
+          <AppText variant="h2" weight="bold" color={colors.text} style={styles.brandTitleText}>
+            Agri Hub
           </AppText>
         </View>
 
         <View style={styles.headerRightRow}>
           <TouchableOpacity
-            style={[styles.cartBadge, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}
+            onPress={toggleTheme}
+            style={[
+              styles.iconBtn,
+              { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
+            ]}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
           >
-            <ShoppingCart size={20} color={colors.text} />
-            {cartCount > 0 && (
-              <View style={[styles.cartBadgeCount, { backgroundColor: colors.primary }]}>
-                <AppText variant="caption" weight="bold" color="#FFFFFF" style={{ fontSize: 10 }}>
-                  {cartCount}
-                </AppText>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setIsProfileOpen(true)}
-            style={[styles.profileAvatar, { backgroundColor: colors.primaryLight }]}
-            activeOpacity={0.7}
-          >
-            <User size={18} color={colors.primary} />
+            {isDark ? <Sun size={20} color={colors.primary} /> : <Moon size={20} color={colors.text} />}
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* User Profile Modal */}
-      <UserProfileModal
-        visible={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-        userName={userName}
-        userRoleLabel={userRoleLabel}
-        mobileNumber={mobileNumber}
-        companyName={companyName}
-        gstNumber={gstNumber}
-        onLogout={onLogout}
-        onSwitchView={onSwitchView}
-      />
-
-      {/* Search Input Bar */}
-      <View style={[styles.searchWrapper, { paddingHorizontal: spacing.md }]}>
-        <View
-          style={[
-            styles.searchContainer,
-            { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
-          ]}
-        >
-          <Search size={18} color={colors.textSecondary} style={{ marginRight: 8 }} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search wheat, rice, tomatoes, fertilizer..."
-            placeholderTextColor={colors.textSecondary + '80'}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-      </View>
-
-      {/* Horizontal Category Chips */}
-      <View style={styles.categorySection}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: spacing.md, gap: 8 }}
-        >
-          {categoryOptions.map((cat) => {
-            const isSelected = selectedCategory === cat.id;
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                activeOpacity={0.8}
-                onPress={() => setSelectedCategory(cat.id)}
-                style={[
-                  styles.categoryChip,
-                  {
-                    backgroundColor: isSelected
-                      ? colors.primary
-                      : isDark
-                      ? colors.surfaceSecondary
-                      : colors.surface,
-                    borderColor: isSelected ? colors.primary : colors.border,
-                  },
-                ]}
-              >
-                <AppText style={{ fontSize: 13, marginRight: 4 }}>{cat.emoji}</AppText>
-                <AppText
-                  variant="caption"
-                  weight="bold"
-                  color={isSelected ? '#FFFFFF' : colors.text}
-                >
-                  {cat.label}
-                </AppText>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* Main Produce Feed */}
       <ScrollView
         contentContainerStyle={[
-          styles.feedContent,
+          styles.scrollContent,
           { paddingHorizontal: spacing.md, paddingBottom: spacing.xl },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.resultsHeaderRow}>
-          <AppText variant="subtitle" weight="bold">
-            {selectedCategory === 'all' ? 'All Agriculture Listings' : 'Category Produce'}
+        <View style={styles.sectionContainer}>
+          <View style={styles.summaryHeaderRow}>
+            <View style={{ flex: 1 }}>
+              <AppText variant="caption" weight="bold" color={colors.primary}>
+                MARKETPLACE OVERVIEW
+              </AppText>
+              <AppText variant="subtitle" weight="bold">
+                Available Supply Summary
+              </AppText>
+            </View>
+          </View>
+          <AppText variant="caption" color={colors.textSecondary} style={{ marginBottom: 12 }}>
+            Swipe or tap any purity grade to order test samples directly.
           </AppText>
-          <AppText variant="caption" color={colors.textSecondary}>
-            {filteredProduce.length} Items Found
-          </AppText>
-        </View>
 
-        {filteredProduce.map((item) => (
-          <Card key={item.id} variant="outlined" style={styles.produceCard}>
-            <View style={styles.cardMainRow}>
-              {/* Emoji Thumbnail Badge */}
-              <View
+          {/* Auto-scrolling Horizontal Carousel */}
+          <ScrollView
+            ref={carouselRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={SNAP_INTERVAL}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            onScrollBeginDrag={() => {
+              isInteracting.current = true;
+            }}
+            onScrollEndDrag={() => {
+              setTimeout(() => {
+                isInteracting.current = false;
+              }, 2000);
+            }}
+            contentContainerStyle={styles.carouselContainer}
+          >
+            {gradeOptions.map((grade) => (
+              <TouchableOpacity
+                key={grade.id}
+                activeOpacity={0.85}
+                onPress={() =>
+                  navigation.navigate('RequestSample', {
+                    purityGrade: grade.label.replace(' Pure', ''),
+                  })
+                }
                 style={[
-                  styles.itemThumbnail,
+                  styles.carouselCard,
                   {
-                    backgroundColor: isDark
-                      ? 'rgba(255, 255, 255, 0.06)'
-                      : colors.surfaceSecondary,
+                    borderColor: colors.border,
                   },
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel={`Request sample for ${grade.label} purity`}
               >
-                <AppText style={{ fontSize: 32 }}>{item.imageEmoji}</AppText>
-              </View>
+                <ImageBackground
+                  source={GRADE_BANNERS[grade.id] || GRADE_BANNERS.grade_85}
+                  style={styles.cardImageBg}
+                  imageStyle={styles.cardImageBgStyle}
+                >
+                  <View
+                    style={[
+                      styles.cardOverlay,
+                      {
+                        backgroundColor: isDark
+                          ? 'rgba(12, 22, 16, 0.82)'
+                          : 'rgba(255, 255, 255, 0.88)',
+                      },
+                    ]}
+                  >
+                    <View style={styles.cardTopRow}>
+                      <View
+                        style={[
+                          styles.emojiBadge,
+                          {
+                            backgroundColor: colors.surface,
+                            borderColor: colors.border,
+                          },
+                        ]}
+                      >
+                        <AppText style={{ fontSize: 18 }}>{grade.emoji}</AppText>
+                      </View>
+                      <View
+                        style={[
+                          styles.gradeTag,
+                          {
+                            backgroundColor: isDark ? colors.primaryLight : colors.surfaceSecondary,
+                            borderColor: colors.border,
+                            borderWidth: 1,
+                          },
+                        ]}
+                      >
+                        <AppText variant="caption" weight="bold" color={colors.primary}>
+                          {grade.label}
+                        </AppText>
+                      </View>
+                    </View>
 
-              {/* Produce Details Column */}
-              <View style={styles.itemDetailsCol}>
-                <View style={styles.titleBadgeRow}>
-                  <AppText variant="subtitle" weight="bold" style={styles.produceTitle}>
-                    {item.name}
-                  </AppText>
-                  {item.isOrganic && (
-                    <View style={[styles.miniBadge, { backgroundColor: colors.primaryLight }]}>
-                      <Leaf size={10} color={colors.primary} />
+                    <View style={{ marginVertical: 10 }}>
+                      <AppText variant="caption" color={colors.textSecondary} weight="semibold">
+                        Available Supply
+                      </AppText>
+                      <AppText
+                        variant="h2"
+                        weight="bold"
+                        color={colors.primary}
+                        style={{ marginTop: 2 }}
+                      >
+                        {totalStockByCategory(listings, grade.id)}
+                      </AppText>
+                    </View>
+
+                    <View
+                      style={[
+                        styles.sampleActionBtn,
+                        { backgroundColor: colors.primary, borderColor: colors.primary },
+                      ]}
+                    >
                       <AppText
                         variant="caption"
                         weight="bold"
-                        color={colors.primary}
-                        style={{ fontSize: 10, marginLeft: 2 }}
+                        color={colors.onPrimary}
+                        style={{ fontSize: 12 }}
                       >
-                        Organic
+                        Request Sample
                       </AppText>
+                      <ArrowRight size={14} color={colors.onPrimary} style={{ marginLeft: 4 }} />
                     </View>
-                  )}
-                </View>
+                  </View>
+                </ImageBackground>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
-                {/* Price & Unit */}
-                <View style={styles.priceRow}>
-                  <AppText variant="h2" weight="bold" color={colors.primary}>
-                    ₹{item.price.toLocaleString('en-IN')}
-                  </AppText>
-                  <AppText variant="caption" color={colors.textSecondary} style={{ marginLeft: 4 }}>
-                    / {item.unit}
-                  </AppText>
-                </View>
-
-                {/* Supplier & Location Info */}
-                <View style={styles.supplierMetaRow}>
-                  <AppText variant="caption" color={colors.textSecondary}>
-                    By {item.supplierName}
-                  </AppText>
-                  {item.isVerified && (
-                    <CheckCircle2 size={13} color={colors.primary} style={{ marginLeft: 4 }} />
-                  )}
-                </View>
-
-                <View style={styles.moqRow}>
-                  <MapPin size={12} color={colors.textMuted} />
-                  <AppText variant="caption" color={colors.textMuted} style={{ marginLeft: 3 }}>
-                    {item.location} • Min: {item.moq}
-                  </AppText>
-                </View>
-              </View>
-            </View>
-
-            {/* Bottom Card Action Row */}
-            <View style={styles.cardFooterRow}>
-              <View style={styles.ratingBox}>
-                <Star size={14} color={colors.warning} fill={colors.warning} />
-                <AppText variant="caption" weight="bold" style={{ marginLeft: 4 }}>
-                  {item.rating}
-                </AppText>
-              </View>
-
-              <Button
-                title="Inquire & Order"
-                variant="primary"
-                size="sm"
-                rightIcon={<ArrowRight size={14} color="#FFFFFF" />}
-                onPress={() => handleInquire(item)}
+          {/* Carousel Pagination Dots */}
+          <View style={styles.paginationDotsRow}>
+            {gradeOptions.map((_, i) => (
+              <TouchableOpacity
+                key={i}
+                onPress={() => {
+                  setActiveIndex(i);
+                  carouselRef.current?.scrollTo({ x: i * SNAP_INTERVAL, animated: true });
+                }}
+                style={[
+                  styles.dot,
+                  {
+                    backgroundColor: i === activeIndex ? colors.primary : colors.border,
+                    width: i === activeIndex ? 18 : 6,
+                  },
+                ]}
               />
-            </View>
-          </Card>
-        ))}
+            ))}
+          </View>
+        </View>
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('AddSupplyOrInquiry', { userRole: 'buyer' })}
+          style={[
+            styles.inquiryCta,
+            { backgroundColor: colors.primaryLight, borderColor: colors.primary + '30' },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Submit a specific inquiry"
+        >
+          <Sprout size={22} color={colors.primary} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <AppText variant="body" weight="bold" color={colors.primary}>
+              Have a specific requirement?
+            </AppText>
+            <AppText variant="caption" color={colors.textSecondary}>
+              Submit an inquiry and matching suppliers will reach out to you
+            </AppText>
+          </View>
+        </TouchableOpacity>
       </ScrollView>
-    </View>
+    </ScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
-  outerContainer: {
-    flex: 1,
-    paddingTop: 12,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingTop: 8,
     marginBottom: 12,
   },
-  locationRow: {
+  brandTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 2,
+    gap: 8,
+  },
+  brandLogo: {
+    width: 26,
+    height: 26,
+    borderRadius: 7,
+    borderWidth: 1,
+  },
+  brandTitleText: {
+    fontSize: 19,
   },
   headerRightRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  cartBadge: {
+  iconBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    position: 'relative',
   },
-  cartBadgeCount: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
+  scrollContent: {
+    gap: 16,
+    paddingBottom: 80,
   },
-  profileAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchWrapper: {
-    marginBottom: 12,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 44,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-  },
-  categorySection: {
-    marginBottom: 16,
-  },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  feedContent: {
-    gap: 14,
-  },
-  resultsHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  sectionContainer: {
     marginBottom: 4,
   },
-  produceCard: {
-    padding: 16,
+  summaryHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  carouselContainer: {
+    paddingVertical: 4,
+    gap: CARD_GAP,
+  },
+  carouselCard: {
+    width: CARD_WIDTH,
     borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
-  cardMainRow: {
+  cardImageBg: {
+    width: '100%',
+    borderRadius: 15,
+  },
+  cardImageBgStyle: {
+    borderRadius: 15,
+  },
+  cardOverlay: {
+    padding: 16,
+    borderRadius: 15,
+    justifyContent: 'space-between',
+  },
+  cardTopRow: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  itemThumbnail: {
-    width: 64,
-    height: 64,
-    borderRadius: 14,
+  emojiBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  itemDetailsCol: {
-    flex: 1,
-  },
-  titleBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 2,
-  },
-  produceTitle: {
-    fontSize: 15,
-    flex: 1,
-  },
-  miniBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+  gradeTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 6,
-    marginLeft: 6,
   },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 4,
-  },
-  supplierMetaRow: {
+  sampleActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 2,
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 4,
   },
-  moqRow: {
+  paginationDotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 14,
   },
-  cardFooterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(150, 150, 150, 0.1)',
+  dot: {
+    height: 6,
+    borderRadius: 3,
   },
-  ratingBox: {
+  inquiryCta: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
   },
 });

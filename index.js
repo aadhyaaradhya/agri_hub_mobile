@@ -1,3 +1,6 @@
+// Must be the first import — react-native-gesture-handler (a React
+// Navigation peer dependency) requires this on Android.
+import 'react-native-gesture-handler';
 import { registerRootComponent } from 'expo';
 import App from './App';
 

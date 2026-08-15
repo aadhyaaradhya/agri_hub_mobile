@@ -1,12 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  TouchableOpacity,
-  ScrollView,
-  Animated,
-  Dimensions,
-} from 'react-native';
+import { StyleSheet, View, TouchableOpacity, ScrollView, Animated, Dimensions } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { AppText } from '../../components/AppText';
 import { Card } from '../../components/Card';
@@ -21,33 +14,32 @@ import {
   LogOut,
   Repeat,
 } from 'lucide-react-native';
+import { useAuth } from '../../state/auth/AuthContext';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface UserProfileModalProps {
   visible: boolean;
   onClose: () => void;
-  userName: string;
-  userRoleLabel: string;
-  mobileNumber?: string;
-  companyName?: string;
-  gstNumber?: string;
-  onLogout: () => void;
+  // Omit entirely to hide the switcher — only "Both"-role accounts should
+  // pass this, closing the gap where any authenticated user could freely
+  // open the other role's dashboard regardless of what they registered as.
   onSwitchView?: () => void;
 }
+
+const ROLE_LABELS: Record<string, string> = {
+  buyer: 'Buyer',
+  supplier: 'Supplier',
+  both: 'Buyer & Supplier',
+};
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   visible,
   onClose,
-  userName,
-  userRoleLabel,
-  mobileNumber = '9876543210',
-  companyName,
-  gstNumber,
-  onLogout,
   onSwitchView,
 }) => {
-  const { colors, spacing } = useTheme();
+  const { colors } = useTheme();
+  const { user, logout } = useAuth();
   const [renderModal, setRenderModal] = useState(visible);
 
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
@@ -57,11 +49,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     if (visible) {
       setRenderModal(true);
       Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
         Animated.spring(slideAnim, {
           toValue: 0,
           tension: 60,
@@ -71,43 +59,25 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       ]).start();
     } else {
       Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
+        Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
         Animated.timing(slideAnim, {
           toValue: SCREEN_HEIGHT,
           duration: 220,
           useNativeDriver: true,
         }),
-      ]).start(() => {
-        setRenderModal(false);
-      });
+      ]).start(() => setRenderModal(false));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `fadeAnim`/`slideAnim` (useRef) are stable.
   }, [visible]);
 
-  if (!renderModal) return null;
+  if (!renderModal || !user) return null;
 
   return (
     <View style={styles.containerOverlay} pointerEvents="box-none">
-      {/* Dimmed Stationary Backdrop Fade */}
-      <Animated.View
-        style={[
-          styles.backdropOverlay,
-          {
-            opacity: fadeAnim,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.backdropTouchable}
-          activeOpacity={1}
-          onPress={onClose}
-        />
+      <Animated.View style={[styles.backdropOverlay, { opacity: fadeAnim }]}>
+        <TouchableOpacity style={styles.backdropTouchable} activeOpacity={1} onPress={onClose} />
       </Animated.View>
 
-      {/* Smooth Spring Bottom Sheet Card */}
       <Animated.View
         style={[
           styles.bottomSheetCard,
@@ -118,12 +88,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           },
         ]}
       >
-        {/* Top Drag Indicator Handle */}
         <View style={styles.dragHandleContainer}>
           <View style={[styles.dragHandlePill, { backgroundColor: colors.border }]} />
         </View>
 
-        {/* Sheet Header Row */}
         <View style={styles.modalHeader}>
           <View style={styles.headerTitleRow}>
             <View style={[styles.avatarBadge, { backgroundColor: colors.primaryLight }]}>
@@ -143,16 +111,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             onPress={onClose}
             style={[styles.closeBtn, { backgroundColor: colors.surfaceSecondary }]}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <X size={18} color={colors.text} />
           </TouchableOpacity>
         </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.bodyScroll}
-        >
-          {/* User Primary Badge Card */}
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.bodyScroll}>
           <Card
             variant="outlined"
             style={[
@@ -161,37 +128,48 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             ]}
           >
             <AppText variant="h2" weight="bold">
-              {userName}
+              {user.fullName}
             </AppText>
             <View style={[styles.rolePill, { backgroundColor: colors.primaryLight }]}>
               <ShieldCheck size={14} color={colors.primary} />
-              <AppText variant="caption" weight="bold" color={colors.primary} style={{ marginLeft: 4 }}>
-                Registered {userRoleLabel}
+              <AppText
+                variant="caption"
+                weight="bold"
+                color={colors.primary}
+                style={{ marginLeft: 4 }}
+              >
+                Registered {ROLE_LABELS[user.role]}
               </AppText>
             </View>
           </Card>
 
-          {/* Profile Details List */}
           <View style={styles.detailsGroup}>
-            <AppText variant="caption" weight="bold" color={colors.textSecondary} style={styles.groupTitle}>
+            <AppText
+              variant="caption"
+              weight="bold"
+              color={colors.textSecondary}
+              style={styles.groupTitle}
+            >
               ACCOUNT & BUSINESS DETAILS
             </AppText>
 
-            <View style={styles.detailRow}>
-              <View style={styles.detailIcon}>
-                <Phone size={18} color={colors.primary} />
+            {user.mobileNumber ? (
+              <View style={styles.detailRow}>
+                <View style={styles.detailIcon}>
+                  <Phone size={18} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <AppText variant="caption" color={colors.textSecondary}>
+                    Mobile Number
+                  </AppText>
+                  <AppText variant="body" weight="semibold">
+                    +91 {user.mobileNumber}
+                  </AppText>
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <AppText variant="caption" color={colors.textSecondary}>
-                  Mobile Number
-                </AppText>
-                <AppText variant="body" weight="semibold">
-                  +91 {mobileNumber}
-                </AppText>
-              </View>
-            </View>
+            ) : null}
 
-            {companyName ? (
+            {user.companyName ? (
               <View style={styles.detailRow}>
                 <View style={styles.detailIcon}>
                   <Building2 size={18} color={colors.primary} />
@@ -201,13 +179,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     Company / Farm Name
                   </AppText>
                   <AppText variant="body" weight="semibold">
-                    {companyName}
+                    {user.companyName}
                   </AppText>
                 </View>
               </View>
             ) : null}
 
-            {gstNumber ? (
+            {user.gstNumber ? (
               <View style={styles.detailRow}>
                 <View style={styles.detailIcon}>
                   <FileText size={18} color={colors.primary} />
@@ -217,31 +195,33 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     GSTIN
                   </AppText>
                   <AppText variant="body" weight="semibold">
-                    {gstNumber}
+                    {user.gstNumber}
                   </AppText>
                 </View>
               </View>
             ) : null}
           </View>
 
-          {/* Switch Role Option */}
           {onSwitchView && (
             <TouchableOpacity
-              onPress={() => {
-                onClose();
-                onSwitchView();
-              }}
+              onPress={onSwitchView}
               activeOpacity={0.8}
               style={[styles.switchCard, { borderColor: colors.border }]}
+              accessibilityRole="button"
+              accessibilityLabel="Switch between marketplace and supplier view"
             >
               <Repeat size={18} color={colors.primary} />
-              <AppText variant="body" weight="bold" color={colors.primary} style={{ marginLeft: 10 }}>
+              <AppText
+                variant="body"
+                weight="bold"
+                color={colors.primary}
+                style={{ marginLeft: 10 }}
+              >
                 Switch Marketplace / Supplier View
               </AppText>
             </TouchableOpacity>
           )}
 
-          {/* Logout Action Button */}
           <Button
             title="Log Out of Agri Hub"
             variant="outline"
@@ -249,7 +229,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             leftIcon={<LogOut size={18} color={colors.error} />}
             onPress={() => {
               onClose();
-              onLogout();
+              logout();
             }}
             style={{ marginTop: 8, borderColor: colors.error + '50' }}
           />

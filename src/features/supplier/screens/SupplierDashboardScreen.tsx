@@ -1,124 +1,94 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { StyleSheet, View, ScrollView, TouchableOpacity } from 'react-native';
+import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
-  StyleSheet,
-  View,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
-import { useTheme } from '../../../theme/ThemeContext';
-import { AppText } from '../../../components/AppText';
-import { Card } from '../../../components/Card';
-import { Button } from '../../../components/Button';
-import {
-  Plus,
   Package,
   IndianRupee,
   ShoppingBag,
   CheckCircle2,
-  Clock,
   Truck,
-  User,
   ChevronRight,
-  TrendingUp,
   ArrowRight,
+  Sun,
+  Moon,
+  Plus,
 } from 'lucide-react-native';
-import { sampleSupplierStat, sampleIncomingOrders, sampleProduceList } from '../../marketplace/mockData';
-import { IncomingOrder, ProduceItem } from '../../marketplace/types';
-import { UserProfileModal } from '../../profile/UserProfileModal';
-import { AddCropListingModal } from '../components/AddCropListingModal';
+import { useTheme } from '../../../theme/ThemeContext';
+import { AppText } from '../../../components/AppText';
+import { Card } from '../../../components/Card';
+import { Button } from '../../../components/Button';
+import { LoadingState } from '../../../components/LoadingState';
+import { ScreenWrapper } from '../../../components/ScreenWrapper';
+import { useMarketplace } from '../../../state/marketplace/MarketplaceContext';
+import { useAuth } from '../../../state/auth/AuthContext';
+import { useToast } from '../../../state/toast/ToastContext';
+import { useConfig } from '../../../state/config/ConfigContext';
+import { AppStackParamList, SupplierTabParamList } from '../../../navigation/types';
+import { IncomingOrder } from '../../marketplace/types';
 
-interface SupplierDashboardScreenProps {
-  supplierName?: string;
-  userName?: string;
-  userRoleLabel?: string;
-  mobileNumber?: string;
-  companyName?: string;
-  gstNumber?: string;
-  onLogout: () => void;
-  onSwitchToMarketplace: () => void;
-}
+type Nav = CompositeNavigationProp<
+  BottomTabNavigationProp<SupplierTabParamList, 'Dashboard'>,
+  NativeStackNavigationProp<AppStackParamList>
+>;
 
-export const SupplierDashboardScreen: React.FC<SupplierDashboardScreenProps> = ({
-  supplierName = 'Green Agro Traders',
-  userName = 'Valued Partner',
-  userRoleLabel = 'Supplier',
-  mobileNumber,
-  companyName,
-  gstNumber,
-  onLogout,
-  onSwitchToMarketplace,
-}) => {
-  const { colors, isDark, spacing } = useTheme();
-  const [orders, setOrders] = useState<IncomingOrder[]>(sampleIncomingOrders);
-  const [produceItems, setProduceItems] = useState<ProduceItem[]>(sampleProduceList);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isAddCropOpen, setIsAddCropOpen] = useState(false);
+// All figures here (active listings, revenue, pending orders, buyer demand)
+// are derived from `MarketplaceContext` — nothing is a hardcoded stat
+// anymore, so publishing a listing or a buyer submitting an inquiry moves
+// these numbers immediately.
+export const SupplierDashboardScreen: React.FC = () => {
+  const navigation = useNavigation<Nav>();
+  const { colors, isDark, toggleTheme, spacing } = useTheme();
+  const { listings, orders, inquiries, isLoaded, updateOrderStatus } = useMarketplace();
+  const { config, isLoading: configLoading } = useConfig();
+  const { user } = useAuth();
+  const { showToast } = useToast();
 
-  const handleUpdateOrderStatus = (orderId: string, nextStatus: 'Accepted' | 'Shipped') => {
-    setOrders((prev) =>
-      prev.map((ord) => (ord.id === orderId ? { ...ord, status: nextStatus } : ord))
+  if (!isLoaded || configLoading || !config || !user) {
+    return (
+      <ScreenWrapper>
+        <LoadingState label="Loading dashboard…" />
+      </ScreenWrapper>
     );
-    Alert.alert('Status Updated!', `Order #${orderId} has been marked as ${nextStatus}.`);
-  };
+  }
 
-  const handleAddProduceItem = (newProduce: ProduceItem) => {
-    // Add to shared produce list for Buyer Marketplace feed
-    sampleProduceList.unshift(newProduce);
-    // Add to local state for Supplier Active Inventory
-    setProduceItems((prev) => [newProduce, ...prev]);
+  const monthlyRevenue = orders
+    .filter((o) => o.status !== 'Pending')
+    .reduce((sum, o) => sum + o.totalPrice, 0);
+  const pendingOrdersCount = orders.filter((o) => o.status === 'Pending').length;
 
-    Alert.alert(
-      'Listing Published! 🌱',
-      `"${newProduce.name}" (${newProduce.price} ₹ / ${newProduce.unit}) is now live on the Agri Hub Marketplace.`
-    );
-  };
-
-  const handleAddListing = () => {
-    setIsAddCropOpen(true);
+  const handleUpdateOrderStatus = async (orderId: string, nextStatus: IncomingOrder['status']) => {
+    await updateOrderStatus(orderId, nextStatus);
+    showToast(`Order #${orderId} marked as ${nextStatus}.`, 'success');
   };
 
   return (
-    <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
-      {/* Top Header Bar */}
+    <ScreenWrapper padded={false} edges={['top', 'left', 'right']}>
       <View style={[styles.header, { paddingHorizontal: spacing.md }]}>
         <View>
           <AppText variant="caption" color={colors.primary} weight="bold">
             SUPPLIER CONTROL PANEL
           </AppText>
           <AppText variant="h2" weight="bold">
-            {supplierName}
+            {user.companyName || user.fullName}
           </AppText>
         </View>
 
         <TouchableOpacity
-          onPress={() => setIsProfileOpen(true)}
-          style={[styles.profileAvatar, { backgroundColor: colors.primaryLight }]}
+          onPress={toggleTheme}
+          style={[
+            styles.iconBtn,
+            { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
+          ]}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
         >
-          <User size={18} color={colors.primary} />
+          {isDark ? <Sun size={20} color={colors.primary} /> : <Moon size={20} color={colors.text} />}
         </TouchableOpacity>
       </View>
-
-      {/* User Profile Modal */}
-      <UserProfileModal
-        visible={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-        userName={userName}
-        userRoleLabel={userRoleLabel}
-        mobileNumber={mobileNumber}
-        companyName={companyName}
-        gstNumber={gstNumber}
-        onLogout={onLogout}
-        onSwitchView={onSwitchToMarketplace}
-      />
-
-      {/* Add Crop Listing Modal */}
-      <AddCropListingModal
-        visible={isAddCropOpen}
-        onClose={() => setIsAddCropOpen(false)}
-        onAddProduce={handleAddProduceItem}
-      />
 
       <ScrollView
         contentContainerStyle={[
@@ -127,34 +97,38 @@ export const SupplierDashboardScreen: React.FC<SupplierDashboardScreenProps> = (
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Switch Mode Banner */}
-        <TouchableOpacity
-          onPress={onSwitchToMarketplace}
-          activeOpacity={0.85}
-          style={[
-            styles.bannerBox,
-            { backgroundColor: colors.primaryLight, borderColor: colors.primary + '30', borderWidth: 1 },
-          ]}
-        >
-          <View style={styles.bannerTextCol}>
-            <AppText variant="subtitle" weight="bold" color={colors.primary}>
-              Browse Buyer Marketplace 🌾
-            </AppText>
-            <AppText variant="caption" color={colors.textSecondary}>
-              Switch to view live produce prices across mandis
-            </AppText>
-          </View>
-          <ChevronRight size={20} color={colors.primary} />
-        </TouchableOpacity>
+        {user.role === 'both' && (
+          <TouchableOpacity
+            onPress={() => navigation.navigate('BuyerTabs')}
+            activeOpacity={0.85}
+            style={[
+              styles.bannerBox,
+              {
+                backgroundColor: colors.primaryLight,
+                borderColor: colors.primary + '30',
+                borderWidth: 1,
+              },
+            ]}
+          >
+            <View style={styles.bannerTextCol}>
+              <AppText variant="subtitle" weight="bold" color={colors.primary}>
+                Browse Buyer Marketplace 🌾
+              </AppText>
+              <AppText variant="caption" color={colors.textSecondary}>
+                Switch to view aggregate demand across grades
+              </AppText>
+            </View>
+            <ChevronRight size={20} color={colors.primary} />
+          </TouchableOpacity>
+        )}
 
-        {/* Quick Stats Grid */}
         <View style={styles.statsGrid}>
           <Card variant="outlined" style={styles.statCard}>
             <View style={[styles.statIconBadge, { backgroundColor: colors.primaryLight }]}>
               <Package size={18} color={colors.primary} />
             </View>
             <AppText variant="subtitle" weight="bold" style={styles.statValue}>
-              {sampleSupplierStat.activeListings}
+              {listings.length}
             </AppText>
             <AppText variant="caption" color={colors.textSecondary} style={styles.statLabel}>
               Active Crop Listings
@@ -162,23 +136,28 @@ export const SupplierDashboardScreen: React.FC<SupplierDashboardScreenProps> = (
           </Card>
 
           <Card variant="outlined" style={styles.statCard}>
-            <View style={[styles.statIconBadge, { backgroundColor: isDark ? 'rgba(234, 179, 8, 0.15)' : '#FEF9C3' }]}>
+            <View style={[styles.statIconBadge, { backgroundColor: colors.warningBackground }]}>
               <IndianRupee size={18} color={colors.warning} />
             </View>
-            <AppText variant="subtitle" weight="bold" color={colors.warning} style={styles.statValue}>
-              ₹1.48L
+            <AppText
+              variant="subtitle"
+              weight="bold"
+              color={colors.warning}
+              style={styles.statValue}
+            >
+              ₹{(monthlyRevenue / 100000).toFixed(2)}L
             </AppText>
             <AppText variant="caption" color={colors.textSecondary} style={styles.statLabel}>
-              Monthly Revenue
+              Revenue (Accepted+)
             </AppText>
           </Card>
 
           <Card variant="outlined" style={styles.statCard}>
-            <View style={[styles.statIconBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF' }]}>
-              <ShoppingBag size={18} color="#3B82F6" />
+            <View style={[styles.statIconBadge, { backgroundColor: colors.infoBackground }]}>
+              <ShoppingBag size={18} color={colors.info} />
             </View>
-            <AppText variant="subtitle" weight="bold" color="#3B82F6" style={styles.statValue}>
-              {sampleSupplierStat.pendingOrders}
+            <AppText variant="subtitle" weight="bold" color={colors.info} style={styles.statValue}>
+              {pendingOrdersCount}
             </AppText>
             <AppText variant="caption" color={colors.textSecondary} style={styles.statLabel}>
               Pending Orders
@@ -186,22 +165,79 @@ export const SupplierDashboardScreen: React.FC<SupplierDashboardScreenProps> = (
           </Card>
         </View>
 
-        {/* Primary Action Button */}
         <Button
           title="+ Add New Crop Listing"
           variant="primary"
           size="lg"
-          onPress={handleAddListing}
+          onPress={() => navigation.navigate('AddSupplyOrInquiry', { userRole: 'supplier' })}
           style={styles.addBtn}
         />
 
-        {/* Incoming Orders Section */}
+        <View style={styles.sectionHeaderRow}>
+          <AppText variant="subtitle" weight="bold">
+            Buyer Demand Summary
+          </AppText>
+        </View>
+        <View
+          style={[
+            styles.demandCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          <AppText variant="caption" color={colors.textSecondary} style={{ marginBottom: 10 }}>
+            Open buyer inquiries by purity grade — {inquiries.length} total
+          </AppText>
+          <View style={styles.purityGrid}>
+            {config.gradeOptions
+              .filter((g) => g.id !== 'custom')
+              .map((grade) => {
+                const count = inquiries.filter(
+                  (i) => i.category === grade.id && i.status === 'Open'
+                ).length;
+                return (
+                  <View
+                    key={grade.id}
+                    style={[
+                      styles.purityBox,
+                      { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
+                    ]}
+                  >
+                    <AppText style={{ fontSize: 13 }}>{grade.emoji}</AppText>
+                    <AppText
+                      variant="caption"
+                      weight="bold"
+                      color={colors.text}
+                      style={{ marginTop: 2 }}
+                    >
+                      {grade.label}
+                    </AppText>
+                    <AppText
+                      variant="subtitle"
+                      weight="bold"
+                      color={colors.primary}
+                      style={{ marginVertical: 1 }}
+                    >
+                      {count}
+                    </AppText>
+                    <AppText
+                      variant="caption"
+                      color={colors.textSecondary}
+                      style={{ fontSize: 10 }}
+                    >
+                      {count === 1 ? 'buyer wants this' : 'buyers want this'}
+                    </AppText>
+                  </View>
+                );
+              })}
+          </View>
+        </View>
+
         <View style={styles.sectionHeaderRow}>
           <AppText variant="subtitle" weight="bold">
             Incoming Buyer Orders
           </AppText>
           <AppText variant="caption" color={colors.primary} weight="bold">
-            View All ({orders.length})
+            {orders.length} Total
           </AppText>
         </View>
 
@@ -223,10 +259,10 @@ export const SupplierDashboardScreen: React.FC<SupplierDashboardScreenProps> = (
                   {
                     backgroundColor:
                       ord.status === 'Pending'
-                        ? isDark ? 'rgba(234, 179, 8, 0.2)' : '#FEF9C3'
+                        ? colors.warningBackground
                         : ord.status === 'Accepted'
-                        ? colors.primaryLight
-                        : isDark ? 'rgba(59, 130, 246, 0.2)' : '#EFF6FF',
+                          ? colors.primaryLight
+                          : colors.infoBackground,
                   },
                 ]}
               >
@@ -237,8 +273,8 @@ export const SupplierDashboardScreen: React.FC<SupplierDashboardScreenProps> = (
                     ord.status === 'Pending'
                       ? colors.warning
                       : ord.status === 'Accepted'
-                      ? colors.primary
-                      : '#3B82F6'
+                        ? colors.primary
+                        : colors.info
                   }
                 >
                   {ord.status}
@@ -246,7 +282,7 @@ export const SupplierDashboardScreen: React.FC<SupplierDashboardScreenProps> = (
               </View>
             </View>
 
-            <View style={styles.orderBodyRow}>
+            <View style={[styles.orderBodyRow, { borderTopColor: colors.border }]}>
               <View style={styles.flex1}>
                 <AppText variant="body" weight="semibold">
                   {ord.produceName} ({ord.quantity})
@@ -258,19 +294,19 @@ export const SupplierDashboardScreen: React.FC<SupplierDashboardScreenProps> = (
             </View>
 
             {ord.status === 'Pending' && (
-              <View style={styles.orderFooterRow}>
+              <View style={[styles.orderFooterRow, { borderTopColor: colors.border }]}>
                 <Button
                   title="Accept Order"
                   variant="primary"
                   size="sm"
-                  rightIcon={<CheckCircle2 size={14} color="#FFFFFF" />}
+                  rightIcon={<CheckCircle2 size={14} color={colors.onPrimary} />}
                   onPress={() => handleUpdateOrderStatus(ord.id, 'Accepted')}
                 />
               </View>
             )}
 
             {ord.status === 'Accepted' && (
-              <View style={styles.orderFooterRow}>
+              <View style={[styles.orderFooterRow, { borderTopColor: colors.border }]}>
                 <Button
                   title="Dispatch Shipment"
                   variant="outline"
@@ -280,20 +316,31 @@ export const SupplierDashboardScreen: React.FC<SupplierDashboardScreenProps> = (
                 />
               </View>
             )}
+
+            {ord.status === 'Shipped' && (
+              <View style={[styles.orderFooterRow, { borderTopColor: colors.border }]}>
+                <Button
+                  title="Mark Delivered"
+                  variant="outline"
+                  size="sm"
+                  rightIcon={<Truck size={14} color={colors.primary} />}
+                  onPress={() => handleUpdateOrderStatus(ord.id, 'Delivered')}
+                />
+              </View>
+            )}
           </Card>
         ))}
 
-        {/* Active Inventory List */}
         <View style={styles.sectionHeaderRow}>
           <AppText variant="subtitle" weight="bold">
             My Active Inventory
           </AppText>
           <AppText variant="caption" color={colors.textSecondary}>
-            {produceItems.length} Active Products
+            {listings.length} Active Products
           </AppText>
         </View>
 
-        {produceItems.map((item) => (
+        {listings.map((item) => (
           <Card key={item.id} variant="outlined" style={styles.inventoryCard}>
             <View style={styles.inventoryRow}>
               <AppText style={{ fontSize: 26, marginRight: 10 }}>{item.imageEmoji}</AppText>
@@ -307,8 +354,16 @@ export const SupplierDashboardScreen: React.FC<SupplierDashboardScreenProps> = (
               </View>
 
               <TouchableOpacity
-                onPress={() => Alert.alert('Edit Listing', `Editing options for ${item.name}`)}
+                onPress={() =>
+                  navigation.navigate('AddSupplyOrInquiry', {
+                    userRole: 'supplier',
+                    existingItem: item,
+                  })
+                }
                 style={[styles.editBtn, { borderColor: colors.border }]}
+                accessibilityRole="button"
+                accessibilityLabel={`Edit listing for ${item.name}`}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <AppText variant="caption" weight="bold" color={colors.primary}>
                   Edit
@@ -318,30 +373,29 @@ export const SupplierDashboardScreen: React.FC<SupplierDashboardScreenProps> = (
           </Card>
         ))}
       </ScrollView>
-    </View>
+    </ScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
-  outerContainer: {
-    flex: 1,
-    paddingTop: 12,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingTop: 8,
     marginBottom: 12,
   },
-  profileAvatar: {
+  iconBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
   },
   scrollContent: {
     gap: 16,
+    paddingBottom: 80,
   },
   bannerBox: {
     flexDirection: 'row',
@@ -388,6 +442,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 6,
   },
+  demandCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+  },
+  purityGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  purityBox: {
+    flex: 1,
+    minWidth: '45%',
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 10,
+    alignItems: 'flex-start',
+  },
   orderCard: {
     padding: 16,
     borderRadius: 16,
@@ -412,7 +484,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(150, 150, 150, 0.1)',
   },
   orderFooterRow: {
     flexDirection: 'row',
@@ -420,7 +491,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(150, 150, 150, 0.1)',
   },
   inventoryCard: {
     padding: 14,

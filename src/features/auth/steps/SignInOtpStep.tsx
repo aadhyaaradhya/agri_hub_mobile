@@ -28,10 +28,10 @@ export const SignInOtpStep: React.FC<SignInOtpStepProps> = ({
   return (
     <>
       <View style={styles.introSection}>
-        <AppText variant="h1" weight="bold" style={styles.title}>
+        <AppText variant="h1" weight="bold" size="xxl" style={styles.title}>
           Enter OTP Code
         </AppText>
-        <AppText variant="body" color={colors.textSecondary} style={styles.subtitle}>
+        <AppText variant="body" color={colors.textSecondary} size="sm">
           We sent a 4-digit code to{' '}
           <AppText variant="body" weight="bold" color={colors.primary}>
             +91 {signInPhone}
@@ -54,9 +54,7 @@ export const SignInOtpStep: React.FC<SignInOtpStepProps> = ({
 
         <View style={styles.timerRow}>
           <AppText variant="caption" color={colors.textSecondary}>
-            {timerSeconds > 0
-              ? `Resend OTP in ${timerSeconds}s`
-              : 'Did not receive code?'}
+            {timerSeconds > 0 ? `Resend OTP in ${timerSeconds}s` : 'Did not receive code?'}
           </AppText>
           {timerSeconds === 0 && (
             <TouchableOpacity onPress={onResendOtp} activeOpacity={0.7}>
@@ -81,12 +79,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 24,
     marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
   },
   formCard: {
     padding: 20,

@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import { AppText } from '../../../components/AppText';
 import { Card } from '../../../components/Card';
+import { Button } from '../../../components/Button';
 import { AppInput } from '../../../components/AppInput';
 import { Phone } from 'lucide-react-native';
 
@@ -10,22 +11,24 @@ interface SignInPhoneStepProps {
   signInPhone: string;
   error?: string;
   onChangePhone: (phone: string) => void;
+  onGoogleLogin: () => void;
 }
 
 export const SignInPhoneStep: React.FC<SignInPhoneStepProps> = ({
   signInPhone,
   error,
   onChangePhone,
+  onGoogleLogin,
 }) => {
   const { colors } = useTheme();
 
   return (
     <>
       <View style={styles.introSection}>
-        <AppText variant="h1" weight="bold" style={styles.title}>
+        <AppText variant="h1" weight="bold" size="xxl" style={styles.title}>
           Welcome Back!
         </AppText>
-        <AppText variant="body" color={colors.textSecondary} style={styles.subtitle}>
+        <AppText variant="body" color={colors.textSecondary} size="sm">
           Enter your registered 10-digit mobile number to receive a verification code.
         </AppText>
       </View>
@@ -42,6 +45,22 @@ export const SignInPhoneStep: React.FC<SignInPhoneStepProps> = ({
           error={error}
           leftIcon={<Phone size={20} color={colors.primary} />}
         />
+
+        <View
+          style={{
+            marginTop: 12,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+            paddingTop: 14,
+          }}
+        >
+          <Button
+            title="Continue with Google"
+            variant="outline"
+            size="md"
+            onPress={onGoogleLogin}
+          />
+        </View>
       </Card>
     </>
   );
@@ -52,12 +71,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 24,
     marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
   },
   formCard: {
     padding: 20,

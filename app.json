@@ -9,19 +9,20 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#064e3b"
+      "backgroundColor": "#1A1A1A"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.saumya1601.agrihub"
     },
     "android": {
       "package": "com.saumya1601.agrihub",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#064e3b"
+        "backgroundColor": "#1A1A1A"
       }
     },
     "web": {

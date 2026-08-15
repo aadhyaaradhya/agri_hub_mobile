@@ -15,8 +15,6 @@ The **Add Crop Listing** feature enables registered **Suppliers** to list their 
 | **Unit Type** | Dropdown / Chips | Required | Must select unit | *Quintal*, *Kg*, *Bag*, *Day* |
 | **Total Stock Available** | Numeric Input | Required | Positive integer | `250` |
 | **Minimum Order Qty (MOQ)** | Text Input | Required | Text description | *10 Quintals* |
-| **Is Organic Produce?** | Toggle / Checkbox | Optional | Boolean flag | `true` 🌱 |
-| **Harvest Location** | Text Input | Required | City, State | *Ludhiana, Punjab* |
 
 ---
 
@@ -32,7 +30,7 @@ sequenceDiagram
     
     Supplier->>App: 1. Tap "+ Add New Crop Listing"
     App->>Supplier: 2. Open Animated Add Crop Bottom Sheet
-    Supplier->>App: 3. Fill crop details, category, price, stock, location
+    Supplier->>App: 3. Fill crop details, category, price, stock
     Supplier->>App: 4. Tap "Publish Crop Listing →"
     App->>App: 5. Validate inputs (show errors if invalid)
     App->>Inventory: 6. Add new produce item to Supplier Inventory

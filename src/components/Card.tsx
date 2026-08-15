@@ -25,6 +25,10 @@ export const Card: React.FC<CardProps> = ({ children, style, variant = 'elevated
         };
       case 'elevated':
       default:
+        // Dark mode: a black shadow barely registers against an
+        // already-near-black background, so `colors.card` is set one real
+        // luminance step above `colors.surface` — that step (plus this
+        // border) is the actual elevation cue in dark mode, not the shadow.
         return {
           backgroundColor: colors.card,
           shadowColor: colors.shadow,

@@ -6,7 +6,9 @@ import {
   TextInputProps,
   StyleProp,
   ViewStyle,
+  TouchableOpacity,
 } from 'react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { AppText } from './AppText';
 
@@ -15,6 +17,8 @@ export interface AppInputProps extends TextInputProps {
   required?: boolean;
   error?: string;
   leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  isPassword?: boolean;
   containerStyle?: StyleProp<ViewStyle>;
 }
 
@@ -23,6 +27,9 @@ export const AppInput: React.FC<AppInputProps> = ({
   required = false,
   error,
   leftIcon,
+  rightIcon,
+  isPassword,
+  secureTextEntry,
   containerStyle,
   style,
   onFocus,
@@ -31,6 +38,10 @@ export const AppInput: React.FC<AppInputProps> = ({
 }) => {
   const { colors, spacing } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const isSecure = isPassword || secureTextEntry;
+  const effectiveSecureTextEntry = isSecure ? !showPassword : false;
 
   return (
     <View style={[styles.wrapper, containerStyle]}>
@@ -52,11 +63,7 @@ export const AppInput: React.FC<AppInputProps> = ({
           styles.inputContainer,
           {
             backgroundColor: colors.surfaceSecondary,
-            borderColor: error
-              ? colors.error
-              : isFocused
-              ? colors.primary
-              : colors.border,
+            borderColor: error ? colors.error : isFocused ? colors.primary : colors.border,
             borderRadius: spacing.borderRadius.md,
           },
         ]}
@@ -64,12 +71,10 @@ export const AppInput: React.FC<AppInputProps> = ({
         {leftIcon && <View style={styles.leftIconWrapper}>{leftIcon}</View>}
 
         <TextInput
-          style={[
-            styles.input,
-            { color: colors.text, paddingVertical: spacing.sm },
-            style,
-          ]}
+          style={[styles.input, { color: colors.text, paddingVertical: spacing.sm }, style]}
           placeholderTextColor={colors.textSecondary + '80'}
+          accessibilityLabel={label}
+          secureTextEntry={effectiveSecureTextEntry}
           onFocus={(e) => {
             setIsFocused(true);
             onFocus && onFocus(e);
@@ -80,6 +85,27 @@ export const AppInput: React.FC<AppInputProps> = ({
           }}
           {...restProps}
         />
+
+        {isSecure && (
+          <TouchableOpacity
+            onPress={() => setShowPassword((prev) => !prev)}
+            style={styles.rightIconWrapper}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+          >
+            {showPassword ? (
+              <EyeOff size={20} color={colors.textSecondary} />
+            ) : (
+              <Eye size={20} color={colors.textSecondary} />
+            )}
+          </TouchableOpacity>
+        )}
+
+        {!isSecure && rightIcon && (
+          <View style={styles.rightIconWrapper}>{rightIcon}</View>
+        )}
       </View>
 
       {error && (
@@ -112,6 +138,10 @@ const styles = StyleSheet.create({
   },
   leftIconWrapper: {
     marginRight: 10,
+  },
+  rightIconWrapper: {
+    marginLeft: 10,
+    padding: 4,
   },
   input: {
     flex: 1,

@@ -4,7 +4,7 @@ import { useTheme } from '../../../theme/ThemeContext';
 import { AppText } from '../../../components/AppText';
 import { Card } from '../../../components/Card';
 import { AppInput } from '../../../components/AppInput';
-import { User, Building2, Phone, FileText } from 'lucide-react-native';
+import { User, Mail, Building2, Phone, FileText, Lock } from 'lucide-react-native';
 import { RegistrationForm, FormErrors, UserRole } from '../types';
 
 interface ProfileFormStepProps {
@@ -26,11 +26,14 @@ export const ProfileFormStep: React.FC<ProfileFormStepProps> = ({
   return (
     <>
       <View style={styles.introSection}>
-        <AppText variant="h1" weight="bold" style={styles.title}>
+        <AppText variant="h1" weight="bold" size="xxl" style={styles.title}>
           Complete Profile
         </AppText>
-        <AppText variant="body" color={colors.textSecondary} style={styles.subtitle}>
-          Registering as <AppText variant="body" weight="bold" color={colors.primary}>{roleLabel}</AppText>
+        <AppText variant="body" color={colors.textSecondary} size="sm">
+          Registering as{' '}
+          <AppText variant="body" weight="bold" color={colors.primary}>
+            {roleLabel}
+          </AppText>
         </AppText>
       </View>
 
@@ -46,8 +49,20 @@ export const ProfileFormStep: React.FC<ProfileFormStepProps> = ({
         />
 
         <AppInput
-          label="Company / Farm Name"
-          placeholder="e.g. Green Agro Traders (Optional)"
+          label="Email Address"
+          required
+          placeholder="e.g. name@company.com"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={formData.email}
+          onChangeText={(val) => onChangeInput('email', val)}
+          error={errors.email}
+          leftIcon={<Mail size={20} color={colors.primary} />}
+        />
+
+        <AppInput
+          label="Company / Farm Name (Optional)"
+          placeholder="e.g. Green Agro Traders"
           value={formData.companyName}
           onChangeText={(val) => onChangeInput('companyName', val)}
           leftIcon={<Building2 size={20} color={colors.primary} />}
@@ -66,14 +81,25 @@ export const ProfileFormStep: React.FC<ProfileFormStepProps> = ({
         />
 
         <AppInput
-          label="GST Number"
-          placeholder="15-character GSTIN (Optional)"
+          label="GST Number (Optional)"
+          placeholder="15-character GSTIN"
           autoCapitalize="characters"
           maxLength={15}
           value={formData.gstNumber}
           onChangeText={(val) => onChangeInput('gstNumber', val.toUpperCase())}
           error={errors.gstNumber}
           leftIcon={<FileText size={20} color={colors.primary} />}
+        />
+
+        <AppInput
+          label="Password"
+          required
+          placeholder="At least 6 characters"
+          secureTextEntry
+          value={formData.password}
+          onChangeText={(val) => onChangeInput('password', val)}
+          error={errors.password}
+          leftIcon={<Lock size={20} color={colors.primary} />}
         />
       </Card>
     </>
@@ -85,12 +111,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 24,
     marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
   },
   formCard: {
     padding: 20,

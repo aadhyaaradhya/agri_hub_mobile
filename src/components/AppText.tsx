@@ -1,12 +1,19 @@
 import React from 'react';
-import { Text as RNText, TextStyle, StyleSheet, TextProps } from 'react-native';
+import { Text as RNText, TextStyle, TextProps } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { Typography } from '../theme/typography';
 
 type Variant = 'h1' | 'h2' | 'subtitle' | 'body' | 'caption' | 'button';
 
 interface AppTextProps extends TextProps {
   children: React.ReactNode;
   variant?: Variant;
+  // Overrides the variant's default font size (preserving its line-height
+  // ratio, weight, and color) — lets a screen reuse a variant's semantics
+  // (e.g. "body" for regular weight) at a different scale instead of
+  // hand-rolling a local `{ fontSize: N }` style, which is how `sm`/`xxl`
+  // ended up silently reinvented in several auth screens.
+  size?: keyof Typography['sizes'];
   color?: string;
   weight?: 'regular' | 'medium' | 'semibold' | 'bold';
   align?: 'auto' | 'left' | 'right' | 'center' | 'justify';
@@ -16,6 +23,7 @@ interface AppTextProps extends TextProps {
 export const AppText: React.FC<AppTextProps> = ({
   children,
   variant = 'body',
+  size,
   color,
   weight,
   align = 'left',
@@ -66,6 +74,16 @@ export const AppText: React.FC<AppTextProps> = ({
   };
 
   const variantStyle = getVariantStyle();
+
+  if (size) {
+    const nextSize = typography.sizes[size];
+    if (typeof variantStyle.fontSize === 'number' && typeof variantStyle.lineHeight === 'number') {
+      const ratio = variantStyle.lineHeight / variantStyle.fontSize;
+      variantStyle.lineHeight = nextSize * ratio;
+    }
+    variantStyle.fontSize = nextSize;
+  }
+
   const textStyle: TextStyle = {
     ...variantStyle,
     color: color || variantStyle.color || colors.text,

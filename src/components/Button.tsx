@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  TouchableOpacity,
-  StyleSheet,
-  ViewStyle,
-  ActivityIndicator,
-  View,
-} from 'react-native';
+import { TouchableOpacity, StyleSheet, ViewStyle, ActivityIndicator, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { AppText } from './AppText';
 
@@ -68,7 +62,7 @@ export const Button: React.FC<ButtonProps> = ({
         return colors.primary;
       case 'primary':
       default:
-        return '#FFFFFF';
+        return colors.onPrimary;
     }
   };
 

@@ -21,14 +21,16 @@ export const RoleSelectionStep: React.FC<RoleSelectionStepProps> = ({
     {
       id: 'buyer',
       title: 'Buyer',
-      subtitle: 'Browse and purchase quality crops, seeds, and farming inputs directly from growers.',
+      subtitle:
+        'Browse and purchase quality crops, seeds, and farming inputs directly from growers.',
       icon: ShoppingCart,
       badge: 'Purchaser',
     },
     {
       id: 'supplier',
       title: 'Supplier',
-      subtitle: 'List your agricultural harvest, tools, and supplies to reach bulk buyers nationwide.',
+      subtitle:
+        'List your agricultural harvest, tools, and supplies to reach bulk buyers nationwide.',
       icon: Store,
       badge: 'Seller',
     },
@@ -44,10 +46,10 @@ export const RoleSelectionStep: React.FC<RoleSelectionStepProps> = ({
   return (
     <>
       <View style={styles.introSection}>
-        <AppText variant="h1" weight="bold" style={styles.title}>
+        <AppText variant="h1" weight="bold" size="xxl" style={styles.title}>
           What brings you here?
         </AppText>
-        <AppText variant="body" color={colors.textSecondary} style={styles.subtitle}>
+        <AppText variant="body" color={colors.textSecondary} size="sm">
           Choose your primary role to customize your marketplace tools.
         </AppText>
       </View>
@@ -68,11 +70,7 @@ export const RoleSelectionStep: React.FC<RoleSelectionStepProps> = ({
                 style={[
                   styles.roleCard,
                   {
-                    backgroundColor: isSelected
-                      ? isDark
-                        ? 'rgba(16, 185, 129, 0.14)'
-                        : 'rgba(16, 185, 129, 0.06)'
-                      : colors.surface,
+                    backgroundColor: isSelected ? colors.primaryLight : colors.surface,
                     borderColor: isSelected ? colors.primary : colors.border,
                     borderWidth: isSelected ? 2 : 1,
                   },
@@ -86,15 +84,12 @@ export const RoleSelectionStep: React.FC<RoleSelectionStepProps> = ({
                         backgroundColor: isSelected
                           ? colors.primary
                           : isDark
-                          ? 'rgba(255, 255, 255, 0.08)'
-                          : colors.surfaceSecondary,
+                            ? 'rgba(255, 255, 255, 0.08)'
+                            : colors.surfaceSecondary,
                       },
                     ]}
                   >
-                    <IconComponent
-                      size={22}
-                      color={isSelected ? '#FFFFFF' : colors.text}
-                    />
+                    <IconComponent size={22} color={isSelected ? colors.onPrimary : colors.text} />
                   </View>
 
                   <View style={styles.headerTextCol}>
@@ -106,18 +101,14 @@ export const RoleSelectionStep: React.FC<RoleSelectionStepProps> = ({
                         style={[
                           styles.pillBadge,
                           {
-                            backgroundColor: isSelected
-                              ? colors.primary
-                              : isDark
-                              ? 'rgba(16, 185, 129, 0.15)'
-                              : colors.primaryLight,
+                            backgroundColor: isSelected ? colors.primary : colors.primaryLight,
                           },
                         ]}
                       >
                         <AppText
                           variant="caption"
                           weight="bold"
-                          color={isSelected ? '#FFFFFF' : colors.primary}
+                          color={isSelected ? colors.onPrimary : colors.primary}
                           style={{ fontSize: 11, letterSpacing: 0.3 }}
                         >
                           {option.badge}
@@ -127,19 +118,11 @@ export const RoleSelectionStep: React.FC<RoleSelectionStepProps> = ({
                   </View>
 
                   {isSelected && (
-                    <CheckCircle2
-                      size={22}
-                      color={colors.primary}
-                      style={styles.checkIcon}
-                    />
+                    <CheckCircle2 size={22} color={colors.primary} style={styles.checkIcon} />
                   )}
                 </View>
 
-                <AppText
-                  variant="body"
-                  color={colors.textSecondary}
-                  style={styles.roleDescription}
-                >
+                <AppText variant="body" color={colors.textSecondary} style={styles.roleDescription}>
                   {option.subtitle}
                 </AppText>
               </Card>
@@ -153,36 +136,32 @@ export const RoleSelectionStep: React.FC<RoleSelectionStepProps> = ({
 
 const styles = StyleSheet.create({
   introSection: {
-    marginBottom: 20,
+    marginBottom: 14,
+    marginTop: 4,
   },
   title: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
+    marginBottom: 3,
   },
   rolesContainer: {
-    gap: 14,
-    marginBottom: 24,
+    gap: 10,
+    marginBottom: 12,
   },
   roleCard: {
-    padding: 16,
-    borderRadius: 16,
+    padding: 13,
+    borderRadius: 14,
   },
   cardHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   iconBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   headerTextCol: {
     flex: 1,
@@ -193,18 +172,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   roleTitle: {
-    fontSize: 16,
+    fontSize: 15,
   },
   pillBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderRadius: 6,
   },
   checkIcon: {
     marginLeft: 8,
   },
   roleDescription: {
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 12.5,
+    lineHeight: 17,
   },
 });
