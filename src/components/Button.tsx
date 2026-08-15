@@ -111,6 +111,7 @@ export const Button: React.FC<ButtonProps> = ({
           <AppText
             variant="button"
             color={getTextColor()}
+            numberOfLines={1}
             style={size === 'sm' ? { fontSize: 13 } : undefined}
           >
             {title}

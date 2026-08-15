@@ -126,7 +126,7 @@ export const ProfileFormScreen: React.FC = () => {
         <View style={styles.dualButtonRow}>
           <View style={styles.flex1}>
             <Button
-              title="Previous"
+              title="Back"
               variant="outline"
               size="lg"
               leftIcon={<ArrowLeft size={18} color={colors.primary} />}
